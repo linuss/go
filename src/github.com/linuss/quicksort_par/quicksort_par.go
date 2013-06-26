@@ -8,6 +8,35 @@ import(
   "strconv"
 )
 
+func concat(old1 []int, pivot int, old2 []int) []int{
+  result := make([]int, 0)
+  for i := range old1{
+    result = append(result,old1[i])
+  }
+  result = append(result,pivot)
+  for i := range old2{
+    result = append(result,old2[i])
+  }
+  return result
+}
+
+func quicksort_seq(nums []int) ([] int){
+  if len(nums) <= 1 { return nums }
+  less := make([]int, 0)
+  greater := make([]int,0)
+  pivot := nums[0]
+  nums = nums[1:]
+
+  for _,i := range nums{
+    switch{
+    case i <= pivot:
+      less = append(less,i)
+    case i > pivot:
+      greater = append(greater,i)
+    }
+  }
+  return concat(quicksort_seq(less),pivot, quicksort_seq(greater))
+}
 
 func quicksort(nums []int, ch chan int, level int, threads int)  {
   /*For each level we go deeper, the amount of threads increases
@@ -37,26 +66,37 @@ func quicksort(nums []int, ch chan int, level int, threads int)  {
     }
   }
 
-  ch1 := make(chan int, len(less))
-  ch2 := make(chan int, len(greater))
 
   //Determine whether to create new threads
   if(level <= threads){
+    ch1 := make(chan int, len(less))
+    ch2 := make(chan int, len(greater))
     go quicksort(less, ch1, level, threads)
     go quicksort(greater,ch2, level, threads)
+
+    //Concatenate results
+    for i := range ch1{
+      ch<-i;
+    }
+    ch<-pivot
+    for i := range ch2{
+      ch<-i;
+    }
+
   }else{
-    quicksort(less,ch1, level, threads)
-    quicksort(greater,ch2, level, threads)
+    less = quicksort_seq(less)
+    greater = quicksort_seq(greater)
+
+    for i := range less{
+      ch<-i;
+    }
+    ch<-pivot
+    for i := range greater{
+      ch<-i;
+    }
+
   }
 
-  //Concatenate results
-  for i := range ch1{
-    ch<-i;
-  }
-  ch<-pivot
-  for i := range ch2{
-    ch<-i;
-  }
 
   //Close the channel
   close(ch)
